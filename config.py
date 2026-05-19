@@ -1,8 +1,9 @@
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
-
+import os
+os.environ["GOOGLE_API_KEY"] = "AIzaSyAO_DL5b8XCrcs2nimzcBgmZu6C9GrwOiM"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-LLM_MODEL = "google/flan-t5-large"
+LLM_MODEL = "gemini-2.5-flash"
 
 FAISS_PATH = "faiss_index"
 

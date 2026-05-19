@@ -4,7 +4,7 @@ from langchain_huggingface import HuggingFacePipeline
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough,RunnableParallel,RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
-
+from langchain_google_genai import ChatGoogleGenerativeAI
 from config import (
     LLM_MODEL,
     MAX_LENGTH,
@@ -16,15 +16,11 @@ from vector_store import load_vector_store
 
 
 def load_llm():
-    pipe = pipeline(
-        "text2text-generation",
-        model=LLM_MODEL,
-        max_length=MAX_LENGTH,
-        temperature=TEMPERATURE
-    )
 
-    llm = HuggingFacePipeline(
-        pipeline=pipe
+    llm = ChatGoogleGenerativeAI(
+        model=LLM_MODEL,
+        temperature=TEMPERATURE,
+        max_output_tokens=MAX_LENGTH
     )
 
     return llm

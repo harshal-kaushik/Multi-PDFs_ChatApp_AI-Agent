@@ -10,3 +10,4 @@ sentence-transformers
 torch
 PyPDF2
 faiss-cpu
+langchain-google-genai
