@@ -9,24 +9,37 @@ from config import (
     FAISS_PATH
 )
 
+def get_text_chunks(docs):
 
-def get_text_chunks(text):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP
+        chunk_overlap=CHUNK_OVERLAP,
+        separators=[
+            "\n\n",
+            "\n",
+            ". ",
+            " ",
+            ""
+        ]
     )
 
-    chunks = splitter.split_text(text)
+    chunks = splitter.split_documents(docs)
+
     return chunks
 
 
-def create_vector_store(text_chunks):
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL
+# creating the embeddings model
+embeddings = HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL,
+        model_kwargs={'device':'cpu'},
+        encode_kwargs={
+            'normalize_embeddings': True
+        }
     )
+def create_vector_store(document_chunks):
 
-    vector_store = FAISS.from_texts(
-        text_chunks,
+    vector_store = FAISS.from_documents(
+        document_chunks,
         embedding=embeddings
     )
 
@@ -34,9 +47,7 @@ def create_vector_store(text_chunks):
 
 
 def load_vector_store():
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL
-    )
+
 
     db = FAISS.load_local(
         FAISS_PATH,
