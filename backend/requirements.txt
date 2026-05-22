@@ -11,3 +11,7 @@ torch
 PyPDF2
 faiss-cpu
 langchain-google-genai
+fastapi
+pydantic
+uvicorn
+python-pptx
