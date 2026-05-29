@@ -3,7 +3,7 @@ import uuid
 from io import BytesIO
 from typing import List, cast
 from pydantic import BaseModel, Field
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from sentence_transformers import CrossEncoder
@@ -14,7 +14,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
-
+from dotenv import load_dotenv
+load_dotenv()
 from config import (
     LLM_MODEL, MAX_LENGTH, TEMPERATURE,
     CHUNK_SIZE_CHILD, CHUNK_OVERLAP_CHILD,
@@ -22,13 +23,13 @@ from config import (
     EMBEDDING_MODEL, FAISS_PATH
 )
 
-
+api_key = os.getenv("GOOGLE_API_KEY")
 # ==========================================
 # DAY 5 BLUEPRINTS: TYPE-SAFE PYDANTIC SCHEMAS
 # ==========================================
 class SlideModel(BaseModel):
     title: str = Field(description="The clear, strategic business heading for this individual slide.")
-    bullets: List[str] = Field(
+    bullets: List[str] = Field(default_factory=list,
         description="A sequential list of 3 to 5 highly concise, impactful bullet point takeaways for the slide body.")
 
 
@@ -50,7 +51,8 @@ class RagEngine:
         base_llm = ChatGoogleGenerativeAI(
             model=LLM_MODEL,
             temperature=TEMPERATURE,
-            max_output_tokens=MAX_LENGTH
+            max_output_tokens=MAX_LENGTH,
+            google_api_key=api_key,
         )
         self.llm = base_llm.with_structured_output(PresentationModel)
 
@@ -198,6 +200,15 @@ class RagEngine:
         top_ranked_docs = ranked_child_docs[:5]
         optimized_parent_context = self._resolve_parent_context(top_ranked_docs)
 
+        # debuging step if parent context loop came back empty
+        if not optimized_parent_context or str(optimized_parent_context).strip() == "":
+            print("⚠️ Warning: Parent context lookup returned empty. Falling back to raw child text blocks.")
+            optimized_parent_context = "\n\n".join([doc.page_content for doc in top_ranked_docs])
+
+        # the text that will be sent to gemini
+        print("\n--- [DEBUG: SENT TO GEMINI CONTEXT] ---")
+        print(optimized_parent_context[:500] + "...")  # Prints the first 500 characters
+        print("----------------------------------------\n")
         # Stage 4: Structure validation output generation pass
         prompt_obj = self._get_slide_prompt()
         formatted_prompt = prompt_obj.format(context=optimized_parent_context, question=user_question)

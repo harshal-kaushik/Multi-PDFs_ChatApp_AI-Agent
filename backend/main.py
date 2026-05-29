@@ -1,61 +1,69 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
+
+# Import your RAG logic file
 from rag_engine import RagEngine
 
-app = FastAPI(title="Doc-to-Decks Agentic Pipeline")
+app = FastAPI()
 
-# Enable Streamlit frontend communication
+# Tell your backend it is allowed to talk to your Streamlit frontend port
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Initialize the RAG engine once when the server starts
 engine = RagEngine()
-UPLOAD_DIR = "uploaded_docs"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+# Step 1: Health Check Route (Fixes your "API Status Irregular" issue)
+@app.get("/")
+def home():
+    return {"status": "online"}
+
+
+# Step 2: Basic PDF Upload Route
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    """Handles secure local storage saving and executes Day 3 Parent-Child indexing."""
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+def upload_pdf(file: UploadFile = File(...)):
+    # Make sure our local folder exists
+    os.makedirs("uploaded_docs", exist_ok=True)
+
+    # Define where to save the file
+    file_path = os.path.join("uploaded_docs", file.filename)
+
+    # Save the uploaded file to your hard drive
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    # Pass the local file path to your RAG engine to read it
     try:
-        total_child_chunks = engine.ingest_pdf(file_path)
-        return {
-            "status": "Success",
-            "filename": file.filename,
-            "message": f"Hierarchical index built successfully with {total_child_chunks} child nodes."
-        }
+        chunks_created = engine.ingest_pdf(file_path)
+        return {"message": "Success", "chunks": chunks_created}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Step 3: Simplified Slide Generation Route (Stability Upgrade)
 @app.post("/generate-deck")
-async def generate_deck(topic: str = Form(...)):
-    """Executes Day 4 Re-ranking, applies Day 5 Guardrails, and streams back clean binary PPTX data."""
+def make_presentation(topic: str = Form(...)):
     if engine.vector_store is None:
-        raise HTTPException(status_code=400, detail="No active document matrix found. Please upload a PDF first.")
+        raise HTTPException(status_code=400, detail="Please upload a PDF first!")
 
     try:
-        # 1. Fetch structured Pydantic model data directly from the RAG engine
-        presentation_object_data = engine.generate_presentation_data(topic)
+        # 1. Ask Gemini to compile the data using your existing engine pipeline
+        presentation_data = engine.generate_presentation_data(topic)
 
-        # 2. Feed the verified object model properties into the PPTX compiler
-        pptx_stream = engine.export_to_pptx(presentation_object_data)
+        # 2. Build the PowerPoint file on disk safely
+        engine.export_to_pptx(presentation_data)
 
-        return StreamingResponse(
-            pptx_stream,
-            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            headers={"Content-Disposition": "attachment; filename=presentation.pptx"}
-        )
+        # 3. Return a clean success flag so the connection stays open
+        return {"status": "success", "message": "Presentation compiled successfully on disk!"}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # If anything goes wrong inside the engine, catch it here so Uvicorn doesn't disconnect!
+        print(f"⚠️ Caught an engine error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Engine compilation failed: {str(e)}")

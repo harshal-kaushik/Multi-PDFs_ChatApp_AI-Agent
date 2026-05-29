@@ -35,7 +35,8 @@ with st.sidebar:
                         "file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")
                     }
                     try:
-                        response = requests.post(f"{BACKEND_URL}/ingest", files=file_payload)
+                        # 🎯 FIXED: Changed endpoint path from /ingest to /upload to match main.py
+                        response = requests.post(f"{BACKEND_URL}/upload", files=file_payload)
                         if response.status_code == 200:
                             st.sidebar.success(f"Indexed: {uploaded_file.name}")
                         else:
@@ -77,24 +78,16 @@ if st.button("🎬 Synthesize & Compile Presentation Deck", use_container_width=
     if not user_prompt.strip():
         st.warning("Please fill out your presentation requirements before compiling.")
     else:
-        # Create an operational loading layer block while waiting for LLM + binary generation
-        with st.spinner(
-                "Executing Parent-Child lookup, running schema validation, and assembling presentation layout..."):
+        with st.spinner("Executing Parent-Child lookup, running schema validation, and assembling presentation layout..."):
             form_payload = {"topic": user_prompt}
             try:
                 response = requests.post(f"{BACKEND_URL}/generate-deck", data=form_payload)
 
                 if response.status_code == 200:
+                    # 🎯 FIXED: Acknowledge that the file was safely generated inside the backend project workspace folder
                     st.success("🎉 Presentation deck compiled successfully!")
-
-                    # Provide the generated binary memory buffer as a native download button link
-                    st.download_button(
-                        label="📥 Download Native Widescreen Presentation (.pptx)",
-                        data=response.content,
-                        file_name="generated_executive_presentation.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        use_container_width=True
-                    )
+                    st.balloons()
+                    st.info("📂 **File Saved:** Check your local `backend/` folder on your machine for a fresh file named `presentation.pptx`!")
                 else:
                     # Parse out errors if the parsing structure fails validation tags
                     error_detail = response.json().get('detail', 'Generation collapse.')
