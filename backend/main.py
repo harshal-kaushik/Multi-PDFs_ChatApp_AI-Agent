@@ -58,7 +58,11 @@ def make_presentation(topic: str = Form(...)):
         presentation_data = engine.generate_presentation_data(topic)
 
         # 2. Build the PowerPoint file on disk safely
-        engine.export_to_pptx(presentation_data)
+        ppt_stream = engine.export_to_pptx(presentation_data)
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        ppt_path = os.path.join(backend_dir, "presentation.pptx")
+        with open(ppt_path, "wb") as f:
+            f.write(ppt_stream.getbuffer())
 
         # 3. Return a clean success flag so the connection stays open
         return {"status": "success", "message": "Presentation compiled successfully on disk!"}
