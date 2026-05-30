@@ -15,7 +15,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 from config import (
     LLM_MODEL, MAX_LENGTH, TEMPERATURE,
     CHUNK_SIZE_CHILD, CHUNK_OVERLAP_CHILD,
@@ -70,7 +70,12 @@ class RagEngine:
             chunk_overlap=CHUNK_OVERLAP_CHILD,
             separators=custom_separators
         )
-        self.db_path = db_store
+        # Resolve the database path absolutely relative to the backend/ directory
+        if not os.path.isabs(db_store):
+            backend_dir = os.path.dirname(os.path.abspath(__file__))
+            self.db_path = os.path.join(backend_dir, db_store)
+        else:
+            self.db_path = db_store
         self.vector_store = self._load_existing_store()
 
     def _load_existing_store(self):
