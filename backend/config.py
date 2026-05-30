@@ -8,5 +8,5 @@ LLM_MODEL = "gemini-2.5-flash"
 FAISS_PATH = "faiss_index"
 # because the context window is small so we need to extract several child chunks
 TOP_K = 12
-MAX_LENGTH = 512
+MAX_LENGTH = 2048
 TEMPERATURE = 0.3
